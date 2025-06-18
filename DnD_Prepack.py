@@ -27,7 +27,16 @@ class SimpleForm(QWidget):
 
         self.title_label = QLabel('DnD\nPre-Packer')
         self.title_label.setAlignment(Qt.AlignCenter)
+
+        self.title_label.setFixedSize(560,60)
         self.title_label.setFont(QFont('Garamond', 15, QFont.Bold, italic = True))
+
+        gray = '#D3D3D3'  # Replace with your actual color value
+        self.title_label.setStyleSheet(f"""
+            color: black;
+            background-color: {gray};
+            border: 1px inset gray;  /* SUNKEN effect */
+        """)
 
 
 
@@ -83,7 +92,7 @@ class SimpleForm(QWidget):
         # --- Layout ---
         layout = QVBoxLayout()
 
-        layout.addWidget(self.title_label)
+        layout.addWidget(self.title_label, alignment=Qt.AlignTop | Qt.AlignHCenter)
 
         # Create a horizontal layout
         row_layout1 = QHBoxLayout()
@@ -132,10 +141,11 @@ class SimpleForm(QWidget):
         layout.addWidget(self.submit_button)
         layout.addWidget(self.quit_button)
 
-
-
-
-
+        layout.setContentsMargins(10, 15, 10, 10)
+        layout.setSpacing(0)
+        for row in [row_layout1, row_layout2, row_layout3, row_layout4, row_layout5, row_layout6, row_layout]:
+            row.setSpacing(5)
+            row.setContentsMargins(10, 15, 10, 10)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
