@@ -1,10 +1,11 @@
 import sys
 
-from PySide6.QtCore import Qt, QRegularExpression
+from PySide6.QtCore import Qt, QRegularExpression, QThread
 from PySide6.QtGui import QRegularExpressionValidator, QFont
 from PySide6.QtWidgets import (QApplication, QWidget, QLabel, QLineEdit, QComboBox, QCheckBox, QPushButton, QVBoxLayout,
-                               QFileDialog, QHBoxLayout)
+                               QFileDialog, QHBoxLayout, QProgressBar, QMessageBox)
 
+import PD
 import Progress
 
 
@@ -19,10 +20,30 @@ class FormData:
         self.feature_x = feature_x
         self.feature_y = feature_y
         self.blazer_id = blazer_id
+
     def toString(self):
-        print()
+        print (
+            f"Output Folder: {self.output_folder}\n"
+            f"Processing Folder: {self.processing_folder}\n"
+            f"Responsible Org: {self.responsible_org}\n"
+            f"Collection Name: {self.collection_name}\n"
+            f"Item Type: {self.item_type}\n"
+            f"Feature X: {self.feature_x}\n"
+            f"Feature Y: {self.feature_y}\n"
+            f"Blazer ID: {self.blazer_id}"
+        )
 
-
+    def to_string_list(self):
+        return [
+            f"Output Folder: {self.output_folder}",
+            f"Processing Folder: {self.processing_folder}",
+            f"Responsible Org: {self.responsible_org}",
+            f"Collection Name: {self.collection_name}",
+            f"Item Type: {self.item_type}",
+            f"Feature X: {self.feature_x}",
+            f"Feature Y: {self.feature_y}",
+            f"Blazer ID: {self.blazer_id}"
+        ]
 
 # Custom QLineEdit to handle mouse press
 class ClickableLineEdit(QLineEdit):
@@ -88,8 +109,8 @@ class SimpleForm(QWidget):
         validator = QRegularExpressionValidator(regex)
         self.blazer_input.setValidator(validator)
 
-        self.checkbox1 = QCheckBox("Enable feature X")
-        self.checkbox2 = QCheckBox("Enable feature Y")
+        self.checkbox1 = QCheckBox("Collate Objects")
+        self.checkbox2 = QCheckBox("Generate CSV Loader")
 
         self.submit_button = QPushButton("Submit")
         self.submit_button.clicked.connect(self.submit)
@@ -102,6 +123,11 @@ class SimpleForm(QWidget):
         self.label3.setFont(QFont('Calibri', 11, QFont.Bold))
         self.label4.setFont(QFont('Calibri', 11, QFont.Bold))
         self.label5.setFont(QFont('Calibri', 11, QFont.Bold))
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+
 
         # --- Layout ---
         layout = QVBoxLayout()
@@ -168,6 +194,8 @@ class SimpleForm(QWidget):
             blazer_id=self.blazer_input.text()
         )
 
+        self.show_progress_popup()
+
         self.close()# store it in an instance variable
         #self.handle_form_data(data)
 
@@ -182,16 +210,37 @@ class SimpleForm(QWidget):
         print("Feature Y:", data.feature_y)
         print("Blazer ID:", data.blazer_id)
 
+    def show_progress_popup(self):
+        from Progress import Worker  # your Worker class
+        self.progress_dialog = PD.ProgressDialog()
 
+        self.thread = QThread()
+        self.worker = Worker(self.form_data)
+        self.worker.moveToThread(self.thread)
 
+        self.thread.started.connect(self.worker.run)
+        self.worker.progress.connect(self.progress_dialog.progress_bar.setValue)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.worker.finished.connect(self.progress_dialog.accept)
+
+        # 🔥 This is the missing piece
+        self.worker.error.connect(self.show_error)
+        self.worker.info.connect(self.show_info)
+
+        self.thread.start()
+        self.progress_dialog.exec()
+
+    def show_error(self, title, message):
+        QMessageBox.warning(self, title, message)
+
+    def show_info(self, title, message):
+        QMessageBox.information(self, title, message)
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = SimpleForm()
     window.show()
-    app.exec()
-    data = window.form_data
-    progress = Progress.Worker()
-    progress.end_method()
-    sys.exit()
+    sys.exit(app.exec())

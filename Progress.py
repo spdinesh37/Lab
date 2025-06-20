@@ -1,32 +1,21 @@
 from PySide6.QtCore import QObject, Signal
+from Collate_files import Collate_files
 
 class Worker(QObject):
-    progress = Signal(int)   # Signal to send progress (0-100)
-    finished = Signal()      # Signal to notify task completion
+    progress = Signal(int)
+    finished = Signal()
+    error = Signal(str, str)   # title, message
+    info = Signal(str, str)    # title, message
+
+    def __init__(self, formData=None):
+        super().__init__()
+        self.formData = formData
+        self.collator = Collate_files()
+
+        # Connect collator signals to worker signals
+        self.collator.error.connect(self.error)
+        self.collator.info.connect(self.info)
 
     def run(self):
-        # --- Start of run method ---
-        self.start_method()  # Code to run at the very start
-
-        # Main long-running task: pass progress.emit as callback
-        your_long_task(self.progress.emit)
-
-        self.end_method()    # Code to run at the very end
-
-        self.finished.emit()  # Notify that the worker has finished
-        # --- End of run method ---
-
-    def start_method(self):
-        # Code to execute right before starting the long task
-        print("Starting the long task...")
-
-    def end_method(self):
-        # Code to execute right after finishing the long task
-        print("Long task finished!")
-
-def your_long_task(progress_callback):
-    total_steps = 100
-    for i in range(total_steps + 1):
-        # --- Do part of the task here ---
-        progress_callback(i)  # Update progress bar
-        # --- End of step ---
+        self.collator.run_procs(self.progress.emit, self.formData)
+        self.finished.emit()
